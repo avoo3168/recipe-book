@@ -1,55 +1,101 @@
 # Recipe Book
 
-A personal recipe book that runs as a static site on GitHub Pages. It has no build step and no dependencies. Recipes are read from `data/recipes.csv` each time the page loads.
+A personal recipe book that runs as a static site on GitHub Pages. It has no build step and no dependencies. Recipes are stored as CSV files in this repository. The site can add and edit recipes and keep a grocery list synced across devices by saving changes back to the repository through GitHub's API.
+
+## Features
+
+- Browse, search (by name, tag, or ingredient), and filter by category
+- Recipe pages with ½×–3× scaling
+- **Add / edit / delete recipes** from the site. Ingredient names autocomplete from your master list, new ones are added automatically, and you can paste a whole ingredient list at once.
+- **Grocery list**: add a whole recipe or single ingredients. The same ingredient from different recipes is combined ("2 bell peppers"), US units are converted and summed (1 cup + 4 tbsp → 1¼ cups), and items are grouped by store aisle. Syncs across connected devices.
+- **Print / Save as PDF** for one recipe, or **Print all** for the whole book (one recipe per page)
+- **Export CSV**: one row per recipe with ingredients written out, for Google Sheets, Notion, or a document
 
 ## Project layout
 
 ```
-index.html          Page shell (header, search, main view)
-css/styles.css      All styling; colors are CSS variables at the top
-js/app.js           Loads the CSV, renders the list and recipe pages, handles routing
-js/csv.js           CSV parser (quoted fields, commas and line breaks inside quotes)
-data/recipes.csv    Your recipes
-.nojekyll           Tells GitHub Pages to serve files as-is
+index.html                  Page shell (header, navigation)
+css/styles.css              All styling; colors are CSS variables at the top
+js/app.js                   Router and startup
+js/store.js                 Loads/saves recipes, ingredients, and the grocery list
+js/github.js                GitHub API: reading files and saving commits
+js/units.js                 US units: parsing amounts, fractions, merging for the grocery list
+js/csv.js                   CSV reader/writer
+js/ui.js                    Small DOM helpers
+js/views/*.js               One file per page (list, recipe, form, grocery, settings, print)
+data/recipes.csv            One row per recipe
+data/ingredients.csv        Master ingredient list
+data/recipe_ingredients.csv Which ingredients (and how much) each recipe uses
+.nojekyll                   Tells GitHub Pages to serve files as-is
 ```
 
-Pages use hash URLs, so every recipe has a link you can share or bookmark:
+Page addresses: `#/` (list), `#/recipe/<id>`, `#/new`, `#/edit/<id>`, `#/grocery`, `#/settings`, `#/print-all`.
 
-- `#/` shows the recipe list
-- `#/recipe/<id>` shows one recipe
+## Data format
 
-## Adding recipes
+The data is split into three linked tables so ingredients can be counted and combined. All three open in Excel or Google Sheets and import into Notion.
 
-Add one row per recipe to `data/recipes.csv`. Keep the header row unchanged.
+**`data/recipes.csv`**: one row per recipe
 
-| Column | Required | Notes |
-| --- | --- | --- |
-| `id` | yes | Unique, URL-friendly, e.g. `banana-bread`. Don't change it once shared, or old links break. |
-| `name` | yes | Recipe title |
-| `category` | | Used for the filter chips, e.g. `Dinner`, `Baking` |
-| `servings` | | Number |
-| `prep_minutes`, `cook_minutes` | | Numbers; total time is calculated |
-| `tags` | | Separated by `\|`, e.g. `quick\|vegetarian` |
-| `ingredients` | | One ingredient per item, separated by `\|` |
-| `instructions` | | One step per item, separated by `\|` |
-| `notes` | | Free text |
-| `source` | | A URL (http/https) |
-| `image` | | Image URL. Leave blank for a colored placeholder. |
+| Column | Notes |
+| --- | --- |
+| `id` | Unique, URL-friendly (e.g. `banana-bread`). Set automatically; keep it stable so links keep working. |
+| `name`, `category` | |
+| `servings`, `prep_minutes`, `cook_minutes` | Numbers |
+| `tags` | Comma-separated: `quick, vegetarian` |
+| `instructions` | One step per line (a multi-line cell) |
+| `notes`, `source`, `image` | Free text / URLs |
 
-If a field contains a comma, wrap it in double quotes. To include a double quote inside a quoted field, type it twice (`""`). Excel and Google Sheets handle both automatically when you save as CSV. The same applies to `|`: it always marks the start of a new item, so don't use it inside an item.
+**`data/ingredients.csv`**: every ingredient once
+
+| Column | Notes |
+| --- | --- |
+| `id` | e.g. `bell-pepper` |
+| `name` | e.g. `bell pepper` |
+| `plural` | Optional, e.g. `bell peppers`. Used for "2 bell peppers" and to match pasted text. |
+| `aisle` | Groups the grocery list: Produce, Meat & Seafood, Dairy & Eggs, Bakery, Pantry, Baking, Spices, Canned & Jarred, Frozen, Beverages, Household, Other |
+
+**`data/recipe_ingredients.csv`**: one row per ingredient per recipe
+
+| Column | Notes |
+| --- | --- |
+| `recipe_id`, `ingredient_id` | Links to the two tables above |
+| `position` | Order in the recipe |
+| `quantity` | Decimal (`0.5`, `1.25`); blank for "to taste" |
+| `unit` | Blank for a count, or one of: tsp, tbsp, cup, fl oz, pint, quart, gallon, oz, lb, pinch, dash, clove, can, jar, package, bunch, head, slice, stick, sprig, piece |
+| `note` | Preparation, e.g. `diced` |
+
+You can edit these files by hand too; extra columns you add are kept when the site saves.
+
+**Grocery lists** are stored in `grocery/<list name>.csv` on a separate branch called `grocery-lists`, created automatically on first use. Keeping them off `main` means checking items off doesn't clutter your recipe history or trigger a site rebuild on every tap.
+
+## Connecting a device (to save recipes and sync the grocery list)
+
+Anyone can view the site. To make changes, each device needs a GitHub access key, entered once in **Settings** (gear icon). The key is stored only in that browser.
+
+1. Go to <https://github.com/settings/personal-access-tokens/new>.
+2. Name it (e.g. *Recipe Book*) and pick an expiration.
+3. **Repository access** → *Only select repositories* → this repository.
+4. **Permissions → Repository permissions → Contents** → *Read and write*.
+5. Generate, copy, and paste it into the site's Settings page.
+
+Every save is a normal commit, so any change can be viewed or undone from the repository's history on GitHub.
+
+### A second person's grocery list
+
+In Settings, **List name** picks which grocery list the device uses. Devices with the same name share one list; setting a different name (e.g. `sam`) on another person's device gives them their own list. Their device also needs an access key. The simplest option is a second key made from your account using the steps above, so you can revoke it separately.
 
 ## Previewing locally
 
-Browsers don't let a page read a CSV file when it's opened straight from disk, so the site needs to be served over HTTP. Pick one:
+Browsers don't let a page read files when it's opened straight from disk, so serve it over HTTP:
 
-- **VS Code:** install the *Live Server* extension, right-click `index.html`, and choose **Open with Live Server**.
-- **Python:** run `python -m http.server 8000` in this folder, then open <http://localhost:8000>.
+- **VS Code:** install the *Live Server* extension, right-click `index.html` → **Open with Live Server**.
+- **Python:** `python -m http.server 8000`, then open <http://localhost:8000>.
 
 ## Publishing on GitHub Pages
 
-1. Create a repository on GitHub and push this folder to it.
-2. In the repository, open **Settings → Pages**.
-3. Under **Build and deployment**, choose **Deploy from a branch**, pick `main` and `/ (root)`, and save.
-4. The site will be live at `https://<your-username>.github.io/<repo-name>/` within a minute or two.
+1. Create a public repository on GitHub and push this folder to it.
+2. **Settings → Pages → Build and deployment → Deploy from a branch**, choose your branch (`main` or `master`) and `/ (root)`, and save.
+3. The site will be live at `https://<username>.github.io/<repo-name>/` within a minute or two.
 
-After editing `recipes.csv`, commit and push; the site updates on its own.
+On `*.github.io` addresses, the Settings page fills in the username and repository name for you.

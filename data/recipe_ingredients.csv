@@ -1,0 +1,36 @@
+recipe_id,position,quantity,unit,ingredient_id,note
+chicken-tacos,1,1.5,lb,chicken-thighs,
+chicken-tacos,2,2,tsp,chili-powder,
+chicken-tacos,3,1,tsp,ground-cumin,
+chicken-tacos,4,1,tsp,garlic-powder,
+chicken-tacos,5,,,salt,
+chicken-tacos,6,1,,bell-pepper,sliced
+chicken-tacos,7,8,,corn-tortilla,small
+chicken-tacos,8,1,cup,cabbage,shredded
+chicken-tacos,9,0.5,cup,sour-cream,
+chicken-tacos,10,,,cilantro,"fresh, for serving"
+chicken-tacos,11,1,,lime,cut into wedges
+banana-bread,1,3,,banana,very ripe
+banana-bread,2,0.5,cup,butter,
+banana-bread,3,0.75,cup,brown-sugar,
+banana-bread,4,1,,egg,
+banana-bread,5,1,tsp,vanilla-extract,
+banana-bread,6,1,tsp,baking-soda,
+banana-bread,7,0.5,tsp,salt,
+banana-bread,8,1.5,cup,all-purpose-flour,
+overnight-oats,1,0.5,cup,rolled-oats,
+overnight-oats,2,0.5,cup,milk,
+overnight-oats,3,0.25,cup,greek-yogurt,
+overnight-oats,4,1,tbsp,chia-seeds,
+overnight-oats,5,1,tbsp,maple-syrup,
+overnight-oats,6,,,berries,for topping
+tomato-soup,1,2,lb,roma-tomato,halved
+tomato-soup,2,1,,bell-pepper,seeded and quartered
+tomato-soup,3,1,,yellow-onion,quartered
+tomato-soup,4,4,clove,garlic,peeled
+tomato-soup,5,3,tbsp,olive-oil,
+tomato-soup,6,,,salt,
+tomato-soup,7,,,black-pepper,
+tomato-soup,8,2,cup,vegetable-broth,
+tomato-soup,9,0.5,cup,heavy-cream,
+tomato-soup,10,,,basil,"fresh, for serving"

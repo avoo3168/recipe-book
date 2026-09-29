@@ -1,4 +1,4 @@
-// Minimal RFC 4180 CSV parser: handles quoted fields, escaped quotes (""),
+// Minimal RFC 4180 CSV reader/writer: handles quoted fields, escaped quotes (""),
 // commas and line breaks inside quotes, CRLF line endings, and a UTF-8 BOM.
 
 export function parseCsv(text) {
@@ -49,12 +49,25 @@ export function parseCsv(text) {
   return rows.filter((r) => r.some((cell) => cell.trim() !== ""));
 }
 
-// Converts parsed rows into objects keyed by the header row.
-export function csvToObjects(text) {
-  const [header, ...rows] = parseCsv(text);
-  if (!header) return [];
-  const keys = header.map((h) => h.trim().toLowerCase());
-  return rows.map((cells) =>
-    Object.fromEntries(keys.map((key, i) => [key, (cells[i] ?? "").trim()]))
-  );
+// Returns { columns, rows } where each row is an object keyed by lower-cased header names.
+export function readCsv(text) {
+  const [header = [], ...rows] = parseCsv(text ?? "");
+  const columns = header.map((h) => h.trim().toLowerCase());
+  return {
+    columns,
+    rows: rows.map((cells) =>
+      Object.fromEntries(columns.map((key, i) => [key, (cells[i] ?? "").replace(/\r\n/g, "\n").trim()]))
+    ),
+  };
+}
+
+function escapeField(value) {
+  const text = value == null ? "" : String(value);
+  return /[",\r\n]|^\s|\s$/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+export function toCsv(columns, rows) {
+  return [columns, ...rows.map((row) => columns.map((column) => row[column]))]
+    .map((cells) => cells.map(escapeField).join(","))
+    .join("\n") + "\n";
 }
