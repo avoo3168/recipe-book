@@ -102,7 +102,8 @@ export function mount(container) {
     }
     const sortByName = (a, b) => a.ingredient.name.localeCompare(b.ingredient.name);
 
-    list.replaceChildren(
+    // Unlike h(), replaceChildren would print a skipped `false` as text, so filter those out.
+    list.replaceChildren(...[
       ...[...byAisle].filter(([, items]) => items.length).map(([aisle, items]) =>
         h("section", { class: "aisle" },
           h("h3", {}, aisle),
@@ -118,8 +119,8 @@ export function mount(container) {
         h("button", {
           type: "button", class: "btn btn-danger",
           onclick: () => confirm("Clear the whole grocery list?") && store.clearGrocery(),
-        }, "Clear list"))
-    );
+        }, "Clear list")),
+    ].filter(Boolean));
 
     if (focusedKey) list.querySelector(`[data-key="${CSS.escape(focusedKey)}"]`)?.focus();
   };
