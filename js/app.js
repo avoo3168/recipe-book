@@ -1,5 +1,6 @@
 import * as store from "./store.js";
 import { h } from "./ui.js";
+import { effectiveTheme, onThemeChange, toggleTheme } from "./theme.js";
 import * as listView from "./views/list.js";
 import * as recipeView from "./views/recipe.js";
 import * as formView from "./views/form.js";
@@ -106,6 +107,16 @@ document.addEventListener("visibilitychange", () => {
 });
 
 window.addEventListener("hashchange", route);
+
+const themeToggle = document.getElementById("theme-toggle");
+function updateThemeToggle() {
+  const label = effectiveTheme() === "dark" ? "Switch to light mode" : "Switch to dark mode";
+  themeToggle.setAttribute("aria-label", label);
+  themeToggle.title = label;
+}
+themeToggle.addEventListener("click", toggleTheme);
+onThemeChange(updateThemeToggle);
+updateThemeToggle();
 
 try {
   await store.load();

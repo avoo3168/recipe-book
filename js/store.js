@@ -316,7 +316,35 @@ function groceryListId() {
   return slugify(github.getSettings().groceryList) || "main";
 }
 const groceryPath = () => `grocery/${groceryListId()}.csv`;
-const cacheKey = () => `recipe-book:grocery:${groceryListId()}`;
+const cacheKey = (id = groceryListId()) => `recipe-book:grocery:${id}`;
+
+export const currentGroceryList = groceryListId;
+
+// Names of the grocery lists saved on GitHub.
+export async function listGroceryLists() {
+  const entries = await github.listDirectory("grocery", GROCERY_BRANCH);
+  return entries
+    .filter((e) => e.type === "file" && e.name.endsWith(".csv"))
+    .map((e) => e.name.slice(0, -4))
+    .sort((a, b) => a.localeCompare(b));
+}
+
+export async function deleteGroceryList(name) {
+  const id = slugify(name);
+  await github.commitFiles({
+    branch: GROCERY_BRANCH,
+    // The README keeps the branch from ever being empty, which Git can't represent.
+    paths: [`grocery/${id}.csv`, "README.md"],
+    message: `Delete grocery list: ${id}`,
+    update: ([, readme]) => [
+      github.DELETE,
+      readme ?? "This branch holds the Recipe Book's grocery lists, one CSV per list in grocery/.\n",
+    ],
+  });
+  try {
+    localStorage.removeItem(cacheKey(id));
+  } catch {}
+}
 
 function readCache() {
   try {

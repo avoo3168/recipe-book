@@ -10,6 +10,7 @@ A personal recipe book that runs as a static site on GitHub Pages. It has no bui
 - **Grocery list**: add a whole recipe or single ingredients. The same ingredient from different recipes is combined ("2 bell peppers"), US units are converted and summed (1 cup + 4 tbsp → 1¼ cups), and items are grouped by store aisle. Syncs across connected devices.
 - **Print / Save as PDF** for one recipe, or **Print all** for the whole book (one recipe per page)
 - **Export CSV**: one row per recipe with ingredients written out, for Google Sheets, Notion, or a document
+- **Light / dark mode**: follows your device, or pick one with the moon/sun button in the header (remembered per device)
 
 ## Project layout
 
@@ -84,6 +85,8 @@ Every save is a normal commit, so any change can be viewed or undone from the re
 ### A second person's grocery list
 
 In Settings, **List name** picks which grocery list the device uses. Devices with the same name share one list; setting a different name (e.g. `sam`) on another person's device gives them their own list. Their device also needs an access key. The simplest option is a second key made from your account using the steps above, so you can revoke it separately.
+
+To delete a list you no longer need, open **Settings → Your grocery lists**. You can't delete the list the device is currently using, so switch it to another list first.
 
 ## Previewing locally
 

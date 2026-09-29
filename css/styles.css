@@ -39,6 +39,81 @@
   color-scheme: light;
 }
 
+/* ---------- Dark theme ----------
+   Follows the device setting unless the header toggle picked light or dark
+   (stored as data-theme on <html>). Screen only, so printing always uses light colors. */
+@media screen and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1a1714;
+    --surface: #24201c;
+    --surface-muted: #2d2823;
+    --text: #efe8df;
+    --text-muted: #aca295;
+    --border: #3a342e;
+    --border-strong: #52493f;
+    --accent: #e27d55;
+    --accent-strong: #f29a76;
+    --accent-soft: #3f2b21;
+    --on-accent: #1a1714;
+    --success: #7cd39a;
+    --success-soft: #1f3426;
+    --warning-soft: #3b311f;
+    --warning-ink: #f1d58f;
+    --danger: #f28b82;
+    --danger-soft: #402321;
+    --focus: #86b6f5;
+    --tint-0: #4a3328;
+    --tint-1: #33412d;
+    --tint-2: #4a4027;
+    --tint-3: #2c3b45;
+    --tint-4: #41314a;
+    --tint-ink: #eadfd2;
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 16px rgb(0 0 0 / 25%);
+    --shadow-hover: 0 2px 4px rgb(0 0 0 / 35%), 0 10px 28px rgb(0 0 0 / 35%);
+    color-scheme: dark;
+  }
+}
+@media screen {
+  :root[data-theme="dark"] {
+    --bg: #1a1714;
+    --surface: #24201c;
+    --surface-muted: #2d2823;
+    --text: #efe8df;
+    --text-muted: #aca295;
+    --border: #3a342e;
+    --border-strong: #52493f;
+    --accent: #e27d55;
+    --accent-strong: #f29a76;
+    --accent-soft: #3f2b21;
+    --on-accent: #1a1714;
+    --success: #7cd39a;
+    --success-soft: #1f3426;
+    --warning-soft: #3b311f;
+    --warning-ink: #f1d58f;
+    --danger: #f28b82;
+    --danger-soft: #402321;
+    --focus: #86b6f5;
+    --tint-0: #4a3328;
+    --tint-1: #33412d;
+    --tint-2: #4a4027;
+    --tint-3: #2c3b45;
+    --tint-4: #41314a;
+    --tint-ink: #eadfd2;
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 16px rgb(0 0 0 / 25%);
+    --shadow-hover: 0 2px 4px rgb(0 0 0 / 35%), 0 10px 28px rgb(0 0 0 / 35%);
+    color-scheme: dark;
+  }
+}
+
+/* Header toggle shows the moon in light mode and the sun in dark mode. */
+.icon-sun { display: none; }
+:root[data-theme="dark"] .icon-sun { display: block; }
+:root[data-theme="dark"] .icon-moon { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .icon-sun { display: block; }
+  :root:not([data-theme="light"]) .icon-moon { display: none; }
+}
+
 /* ---------- Base ---------- */
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -143,12 +218,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .search input:focus ~ kbd { display: none; }
 
 .site-nav { display: flex; align-items: center; gap: 6px; margin-left: auto; }
-.site-nav > a:not(.btn) {
+.site-nav > a:not(.btn), .site-nav > button {
   display: inline-flex; align-items: center; gap: 6px;
-  min-height: 36px; padding: 6px 10px; border-radius: 999px;
-  color: var(--text-muted); text-decoration: none; font-size: 0.95rem; font-weight: 500;
+  min-height: 36px; padding: 6px 10px; border: 0; border-radius: 999px;
+  background: transparent; color: var(--text-muted); text-decoration: none;
+  font-size: 0.95rem; font-weight: 500; cursor: pointer;
 }
-.site-nav > a:not(.btn):hover { color: var(--text); background: var(--surface-muted); }
+.site-nav > a:not(.btn):hover, .site-nav > button:hover { color: var(--text); background: var(--surface-muted); }
 .site-nav > a[aria-current="page"]:not(.btn) { color: var(--text); background: var(--surface-muted); }
 .site-nav .nav-icon { padding: 6px 8px; }
 
@@ -158,8 +234,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-size: 0.75rem; font-weight: 600;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1000px) {
   .search { order: 3; flex-basis: 100%; max-width: none; }
+}
+@media (max-width: 760px) {
   .search kbd { display: none; }
   .nav-recipes { display: none !important; }
 }
@@ -365,6 +443,16 @@ button.tag:hover { background: var(--accent); color: var(--on-accent); }
 .help summary { cursor: pointer; font-weight: 600; }
 .help ol { margin: 10px 0 0; padding-left: 1.3em; }
 .help li { margin-bottom: 6px; }
+
+.recipe-form + .recipe-form { margin-top: 20px; }
+.list-manager { list-style: none; margin: 12px 0; padding: 0; }
+.list-manager li {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.list-manager li:last-child { border-bottom: 0; }
+.list-name { font-weight: 600; }
+.list-manager .spacer { flex: 1; }
 
 /* ---------- Grocery list ---------- */
 .grocery-page { max-width: 720px; }

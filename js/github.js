@@ -102,6 +102,17 @@ export async function readFile(path, ref) {
   }
 }
 
+// Entries ({ name, type, ... }) in a folder, or [] if the folder or branch doesn't exist.
+export async function listDirectory(path, ref) {
+  try {
+    const entries = await request(`/contents/${encodePath(path)}?ref=${encodeURIComponent(ref)}`);
+    return Array.isArray(entries) ? entries : [];
+  } catch (error) {
+    if (error.status === 404) return [];
+    throw error;
+  }
+}
+
 // Confirms the settings point at a repository and branch the key can read.
 // If the branch setting doesn't exist, switches to the repository's default branch.
 export async function testConnection() {
@@ -115,10 +126,13 @@ export async function testConnection() {
   throw new GitHubError(`The repository has no branch named "${settings.branch}".`, 404);
 }
 
+// Return this from a commitFiles `update` to delete that file.
+export const DELETE = Symbol("delete");
+
 // Saves several files in a single commit.
 //
 // `update` receives the current text of each path (null if missing) and returns the new
-// text for each (null = leave unchanged). If another device saved in the meantime, the
+// text for each (null = leave unchanged, DELETE = remove). If another device saved in the meantime, the
 // latest files are re-read and `update` runs again, so changes are never overwritten.
 // A branch that doesn't exist yet is created with only these files in it.
 // Resolves to the resulting text of each path.
@@ -129,9 +143,9 @@ export async function commitFiles({ branch, paths, message, update }) {
     const next = await update(current);
     const changed = paths
       .map((path, i) => ({ path, content: next[i] }))
-      .filter((file, i) => file.content != null && file.content !== current[i]);
+      .filter((file, i) => (file.content === DELETE ? current[i] != null : file.content != null && file.content !== current[i]));
 
-    const result = paths.map((_, i) => next[i] ?? current[i]);
+    const result = paths.map((_, i) => (next[i] === DELETE ? null : next[i] ?? current[i]));
     if (!changed.length) return result;
 
     const baseTree = head ? (await request(`/git/commits/${head}`)).tree.sha : undefined;
@@ -139,7 +153,10 @@ export async function commitFiles({ branch, paths, message, update }) {
       method: "POST",
       body: {
         base_tree: baseTree,
-        tree: changed.map(({ path, content }) => ({ path, mode: "100644", type: "blob", content })),
+        tree: changed.map(({ path, content }) =>
+          content === DELETE
+            ? { path, mode: "100644", type: "blob", sha: null }
+            : { path, mode: "100644", type: "blob", content }),
       },
     });
     const commit = await request("/git/commits", {

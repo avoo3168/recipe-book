@@ -1,8 +1,86 @@
 import * as store from "../store.js";
 import * as github from "../github.js";
 import { h, toast } from "../ui.js";
+import { getThemePreference, setThemePreference, onThemeChange } from "../theme.js";
 
 const TOKEN_URL = "https://github.com/settings/personal-access-tokens/new";
+
+// Keep the Appearance menu in step with the header's light/dark button.
+onThemeChange(() => {
+  const select = document.getElementById("settings-appearance");
+  if (select) select.value = getThemePreference();
+});
+
+function appearanceSection() {
+  const select = h("select", { id: "settings-appearance", onchange: (e) => setThemePreference(e.target.value) },
+    [["system", "Match this device"], ["light", "Light"], ["dark", "Dark"]].map(([value, label]) =>
+      h("option", { value, selected: value === getThemePreference() }, label)));
+  return h("div", { class: "recipe-form" },
+    h("fieldset", {},
+      h("legend", {}, "Appearance"),
+      field("Theme", select, "Remembered on this device. The moon/sun button in the header switches it too.")));
+}
+
+// Lists saved on GitHub, with buttons to switch this device to one or delete it.
+function groceryListsSection(onSwitch) {
+  const body = h("div", {}, h("p", { class: "hint" }, "Loading lists…"));
+  const section = h("div", { class: "recipe-form" },
+    h("fieldset", {},
+      h("legend", {}, "Your grocery lists"),
+      body));
+
+  const render = async () => {
+    let names;
+    try {
+      names = await store.listGroceryLists();
+    } catch (error) {
+      body.replaceChildren(h("p", { class: "form-status is-error" }, error.message));
+      return;
+    }
+    const current = store.currentGroceryList();
+    if (!names.includes(current)) names = [current, ...names];
+
+    body.replaceChildren(
+      h("p", { class: "hint" }, "A list is saved to GitHub the first time something is added to it."),
+      h("ul", { class: "list-manager" },
+        names.map((name) => {
+          const inUse = name === current;
+          return h("li", {},
+            h("span", { class: "list-name" }, name),
+            inUse && h("span", { class: "badge-new" }, "Used on this device"),
+            h("span", { class: "spacer" }),
+            !inUse && h("button", {
+              type: "button", class: "btn btn-quiet btn-small",
+              onclick: async () => {
+                github.saveSettings({ ...github.getSettings(), groceryList: name });
+                await store.loadGrocery();
+                toast(`This device now uses the "${name}" grocery list.`);
+                onSwitch();
+              },
+            }, "Use on this device"),
+            h("button", {
+              type: "button", class: "btn btn-danger btn-small", disabled: inUse,
+              title: inUse ? "Switch this device to another list before deleting this one" : null,
+              onclick: async (event) => {
+                if (!confirm(`Delete the "${name}" grocery list and everything on it? Other devices using it will start a new, empty list with the same name.`)) return;
+                event.target.disabled = true;
+                try {
+                  await store.deleteGroceryList(name);
+                  toast(`Deleted the "${name}" grocery list.`);
+                  render();
+                } catch (error) {
+                  toast(`Couldn't delete: ${error.message}`);
+                  event.target.disabled = false;
+                }
+              },
+            }, "Delete"));
+        })),
+      h("p", { class: "hint" }, "To delete the list this device uses, switch to another list first. To start a new list, type a new name under Grocery list above and save."));
+  };
+
+  render();
+  return section;
+}
 
 function field(label, control, hint) {
   control.id ||= `settings-${label.toLowerCase().replace(/\W+/g, "-")}`;
@@ -99,7 +177,9 @@ export function mount(container) {
           h("li", {}, "Under ", h("strong", {}, "Repository access"), ", choose ", h("strong", {}, "Only select repositories"), " and pick your recipe book repository."),
           h("li", {}, "Under ", h("strong", {}, "Permissions → Repository permissions"), ", set ", h("strong", {}, "Contents"), " to ", h("strong", {}, "Read and write"), "."),
           h("li", {}, "Click ", h("strong", {}, "Generate token"), ", copy it, and paste it below. GitHub only shows it once."))),
-      form)
+      form,
+      github.isConnected() && groceryListsSection(() => mount(container)),
+      appearanceSection())
   );
 
   return { title: "Settings" };
