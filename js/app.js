@@ -1,5 +1,5 @@
 import * as store from "./store.js";
-import { h } from "./ui.js";
+import { h, clearSearch } from "./ui.js";
 import { effectiveTheme, onThemeChange, toggleTheme } from "./theme.js";
 import * as listView from "./views/list.js";
 import * as recipeView from "./views/recipe.js";
@@ -88,10 +88,27 @@ store.on("grocery", () => {
   current?.onGrocery?.();
 });
 
+const searchClear = document.getElementById("search-clear");
+
 searchInput.addEventListener("input", () => {
+  searchClear.hidden = !searchInput.value;
   if (currentModule !== listView) location.hash = "#/";
   else current?.onSearch?.();
 });
+
+searchClear.addEventListener("click", (event) => {
+  event.preventDefault(); // it sits inside the search <label>
+  clearSearch();
+  searchInput.focus();
+});
+
+// The logo and "Recipes" link go back to every recipe, clearing any search or category.
+document.querySelectorAll(".brand, .nav-recipes").forEach((link) =>
+  link.addEventListener("click", () => {
+    listView.resetFilters();
+    if (searchInput.value) clearSearch();
+    else if (currentModule === listView) current?.onSearch?.();
+  }));
 
 document.addEventListener("keydown", (event) => {
   const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName);

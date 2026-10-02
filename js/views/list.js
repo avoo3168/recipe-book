@@ -1,7 +1,12 @@
 import * as store from "../store.js";
-import { h, formatMinutes, isSafeUrl, tintFor, downloadFile } from "../ui.js";
+import { h, formatMinutes, isSafeUrl, tintFor, downloadFile, clearSearch } from "../ui.js";
 
 let category = "All";
+
+// Called by the logo and "Recipes" link so they always lead back to every recipe.
+export function resetFilters() {
+  category = "All";
+}
 
 function matchesQuery(recipe, query) {
   if (!query) return true;
@@ -78,6 +83,10 @@ export function mount(container) {
             }, "Export CSV")
           )
         ),
+        query &&
+          h("div", { class: "filter-bar" },
+            h("span", {}, "Showing recipes matching ", h("strong", {}, `“${query}”`)),
+            h("button", { type: "button", class: "btn btn-quiet btn-small", onclick: clearSearch }, "✕ Clear")),
         h(
           "div",
           { class: "chips", role: "group", "aria-label": "Filter by category" },

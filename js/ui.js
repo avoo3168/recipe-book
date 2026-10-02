@@ -59,6 +59,13 @@ export function tintFor(text) {
   return `tint-${hash % 5}`;
 }
 
+export function clearSearch() {
+  const search = document.getElementById("search");
+  if (!search.value) return;
+  search.value = "";
+  search.dispatchEvent(new Event("input"));
+}
+
 export function searchFor(text) {
   const search = document.getElementById("search");
   search.value = text;
