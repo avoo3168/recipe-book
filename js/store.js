@@ -20,12 +20,16 @@ const FILES = {
   recipes: "data/recipes.csv",
   ingredients: "data/ingredients.csv",
   recipeIngredients: "data/recipe_ingredients.csv",
+  collections: "data/collections.csv",
+  collectionRecipes: "data/collection_recipes.csv",
 };
 
 const COLUMNS = {
   recipes: ["id", "name", "category", "servings", "prep_minutes", "cook_minutes", "tags", "instructions", "notes", "source", "image"],
   ingredients: ["id", "name", "plural", "aisle"],
   recipeIngredients: ["recipe_id", "position", "quantity", "unit", "ingredient_id", "note"],
+  collections: ["id", "name", "description"],
+  collectionRecipes: ["collection_id", "recipe_id", "added"],
   grocery: ["id", "ingredient_id", "name", "quantity", "unit", "recipe_id", "checked", "added"],
 };
 
@@ -43,7 +47,7 @@ function emit(type) {
 // ---------- Helpers ----------
 
 export function slugify(text) {
-  return String(text ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  return String(text ?? "").toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
 function uniqueId(base, taken) {
@@ -78,18 +82,13 @@ const serializeTable = (table) => toCsv(table.columns, table.rows);
 
 // ---------- Recipes and ingredients ----------
 
-const db = {
-  recipes: parseTable("", "recipes"),
-  ingredients: parseTable("", "ingredients"),
-  recipeIngredients: parseTable("", "recipeIngredients"),
-};
+const db = Object.fromEntries(Object.keys(FILES).map((key) => [key, parseTable("", key)]));
 let ingredientIndex = new Map();
 let loadWarning = "";
 
-function setTables([recipes, ingredients, recipeIngredients]) {
-  db.recipes = parseTable(recipes, "recipes");
-  db.ingredients = parseTable(ingredients, "ingredients");
-  db.recipeIngredients = parseTable(recipeIngredients, "recipeIngredients");
+// texts: { recipes: "...csv...", ... } — only the tables given are replaced.
+function setTables(texts) {
+  for (const [key, text] of Object.entries(texts)) db[key] = parseTable(text, key);
   ingredientIndex = new Map(db.ingredients.rows.map((row) => [row.id, row]));
 }
 
@@ -121,7 +120,7 @@ export async function load() {
     }
   }
   texts ??= await Promise.all(paths.map(readSiteFile));
-  setTables(texts);
+  setTables(Object.fromEntries(Object.keys(FILES).map((key, i) => [key, texts[i]])));
   emit("data");
 }
 
@@ -212,7 +211,7 @@ export async function saveRecipe(form, existingId = null) {
   const oldImage = existingId ? db.recipes.rows.find((r) => r.id === existingId)?.image : null;
   const oldPhoto = isUploadedPhoto(oldImage) && oldImage !== image ? oldImage : null;
 
-  const paths = [...Object.values(FILES), photoPath, oldPhoto].filter(Boolean);
+  const paths = [FILES.recipes, FILES.ingredients, FILES.recipeIngredients, photoPath, oldPhoto].filter(Boolean);
   let savedId = existingId;
 
   const texts = await github.commitFiles({
@@ -276,34 +275,143 @@ export async function saveRecipe(form, existingId = null) {
   });
 
   if (photoPath) photoPreviews.set(photoPath, form.photo.previewUrl);
-  setTables(texts.slice(0, 3));
+  setTables({ recipes: texts[0], ingredients: texts[1], recipeIngredients: texts[2] });
   emit("data");
   return savedId;
 }
 
+// Also removes the recipe from every collection, and deletes its uploaded photo.
 export async function deleteRecipe(id) {
   const recipe = getRecipe(id);
   const photo = isUploadedPhoto(recipe?.image) ? recipe.image : null;
   const texts = await github.commitFiles({
     branch: github.getSettings().branch,
-    paths: [...Object.values(FILES), photo].filter(Boolean),
+    paths: [FILES.recipes, FILES.recipeIngredients, FILES.collectionRecipes, photo].filter(Boolean),
     message: `Delete recipe: ${recipe?.name ?? id}`,
-    update: ([recipesText, , linksText]) => {
+    update: ([recipesText, linksText, savedText]) => {
       const recipes = parseTable(recipesText, "recipes");
       const links = parseTable(linksText, "recipeIngredients");
+      const saved = parseTable(savedText, "collectionRecipes");
       recipes.rows = recipes.rows.filter((r) => r.id !== id);
       links.rows = links.rows.filter((r) => r.recipe_id !== id);
-      return [serializeTable(recipes), null, serializeTable(links), ...(photo ? [github.DELETE] : [])];
+      const savedBefore = saved.rows.length;
+      saved.rows = saved.rows.filter((r) => r.recipe_id !== id);
+      return [
+        serializeTable(recipes),
+        serializeTable(links),
+        saved.rows.length === savedBefore ? null : serializeTable(saved),
+        ...(photo ? [github.DELETE] : []),
+      ];
     },
   });
-  setTables(texts.slice(0, 3));
+  setTables({ recipes: texts[0], recipeIngredients: texts[1], collectionRecipes: texts[2] ?? "" });
   emit("data");
+}
+
+// ---------- Collections ----------
+//
+// Changes show up immediately and are saved to GitHub one after another in the
+// background. If a save fails, the data is reloaded from GitHub so the screen
+// matches what was actually saved.
+
+let collectionSaves = Promise.resolve();
+
+function saveCollections(message, mutate) {
+  const apply = (texts) => {
+    const collections = parseTable(texts.collections, "collections");
+    const saved = parseTable(texts.collectionRecipes, "collectionRecipes");
+    mutate(collections.rows, saved);
+    return { collections: serializeTable(collections), collectionRecipes: serializeTable(saved) };
+  };
+
+  // Update the screen now.
+  setTables(apply({ collections: serializeTable(db.collections), collectionRecipes: serializeTable(db.collectionRecipes) }));
+  emit("data");
+
+  // Then save, replaying the same change on the latest files from GitHub.
+  const save = collectionSaves.then(async () => {
+    const [collections, collectionRecipes] = await github.commitFiles({
+      branch: github.getSettings().branch,
+      paths: [FILES.collections, FILES.collectionRecipes],
+      message,
+      update: ([collections, collectionRecipes]) => {
+        const next = apply({ collections, collectionRecipes });
+        return [next.collections, next.collectionRecipes];
+      },
+    });
+    setTables({ collections: collections ?? "", collectionRecipes: collectionRecipes ?? "" });
+    emit("data");
+  });
+  collectionSaves = save.catch(async () => {
+    await load().catch(() => {});
+  });
+  return save;
+}
+
+export function getCollections() {
+  return db.collections.rows
+    .filter((c) => c.id)
+    .map((c) => {
+      // Newest first; rows added in the same moment keep file order (later = newer).
+      const recipeIds = db.collectionRecipes.rows
+        .map((r, index) => ({ ...r, index }))
+        .filter((r) => r.collection_id === c.id)
+        .sort((a, b) => (b.added || "").localeCompare(a.added || "") || b.index - a.index)
+        .map((r) => r.recipe_id);
+      return { id: c.id, name: c.name || "Untitled", description: c.description || "", recipeIds };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function getCollection(id) {
+  return getCollections().find((c) => c.id === id) ?? null;
+}
+
+// Returns the new collection's id. `recipeId` optionally saves a recipe into it right away.
+export function createCollection(name, recipeId = null) {
+  const id = uniqueId(slugify(name) || "collection", new Set(db.collections.rows.map((c) => c.id)));
+  const added = new Date().toISOString();
+  const done = saveCollections(`Add collection: ${name}`, (collections, saved) => {
+    if (!collections.some((c) => c.id === id)) collections.push({ id, name, description: "" });
+    if (recipeId && !saved.rows.some((r) => r.collection_id === id && r.recipe_id === recipeId)) {
+      saved.rows.push({ collection_id: id, recipe_id: recipeId, added });
+    }
+  });
+  return { id, done };
+}
+
+export function updateCollection(id, { name, description }) {
+  return saveCollections(`Update collection: ${name}`, (collections) => {
+    const collection = collections.find((c) => c.id === id);
+    if (collection) Object.assign(collection, { name, description });
+  });
+}
+
+export function deleteCollection(id) {
+  const name = getCollection(id)?.name ?? id;
+  return saveCollections(`Delete collection: ${name}`, (collections, saved) => {
+    const index = collections.findIndex((c) => c.id === id);
+    if (index >= 0) collections.splice(index, 1);
+    saved.rows = saved.rows.filter((r) => r.collection_id !== id);
+  });
+}
+
+export function setRecipeInCollection(collectionId, recipeId, included) {
+  const collection = getCollection(collectionId)?.name ?? collectionId;
+  const recipe = getRecipe(recipeId)?.name ?? recipeId;
+  const added = new Date().toISOString();
+  return saveCollections(`${included ? "Save" : "Remove"} ${recipe} ${included ? "to" : "from"} ${collection}`, (_, saved) => {
+    const exists = saved.rows.some((r) => r.collection_id === collectionId && r.recipe_id === recipeId);
+    if (included && !exists) saved.rows.push({ collection_id: collectionId, recipe_id: recipeId, added });
+    if (!included) saved.rows = saved.rows.filter((r) => !(r.collection_id === collectionId && r.recipe_id === recipeId));
+  });
 }
 
 // One row per recipe with ingredients written out as text — easy to import into
 // Google Sheets, Notion, or paste into a document.
 export function exportCsv() {
-  const columns = ["Name", "Category", "Servings", "Prep minutes", "Cook minutes", "Tags", "Ingredients", "Instructions", "Notes", "Source", "Image"];
+  const columns = ["Name", "Category", "Servings", "Prep minutes", "Cook minutes", "Tags", "Collections", "Ingredients", "Instructions", "Notes", "Source", "Image"];
+  const collections = getCollections();
   const rows = getRecipes()
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((r) => ({
@@ -313,6 +421,7 @@ export function exportCsv() {
       "Prep minutes": r.prepMinutes || "",
       "Cook minutes": r.cookMinutes || "",
       Tags: r.tags.join(", "),
+      Collections: collections.filter((c) => c.recipeIds.includes(r.id)).map((c) => c.name).join(", "),
       Ingredients: r.ingredients.map((item) => formatIngredient(item)).join("\n"),
       Instructions: r.instructions.map((step, i) => `${i + 1}. ${step}`).join("\n"),
       Notes: r.notes,

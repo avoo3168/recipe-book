@@ -16,7 +16,7 @@ function matchesQuery(recipe, query) {
   return query.toLowerCase().split(/\s+/).every((word) => haystack.includes(word));
 }
 
-function renderCard(recipe) {
+export function renderCard(recipe) {
   const time = formatMinutes(recipe.totalMinutes);
   const media =
     recipe.image && isSafeUrl(recipe.image)

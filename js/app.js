@@ -7,6 +7,7 @@ import * as formView from "./views/form.js";
 import * as groceryView from "./views/grocery.js";
 import * as settingsView from "./views/settings.js";
 import * as printView from "./views/print.js";
+import * as collectionsView from "./views/collections.js";
 
 const view = document.getElementById("view");
 const searchInput = document.getElementById("search");
@@ -19,6 +20,8 @@ const ROUTES = [
   [/^#\/grocery$/, groceryView, "grocery"],
   [/^#\/settings$/, settingsView, "settings"],
   [/^#\/print-all$/, printView, "list"],
+  [/^#\/collections$/, { mount: collectionsView.mountAll }, "collections"],
+  [/^#\/collection\/(.+)$/, { mount: collectionsView.mountOne }, "collections", (m) => ({ id: decodeURIComponent(m[1]) })],
 ];
 
 function matchRoute(hash) {

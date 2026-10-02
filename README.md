@@ -8,6 +8,7 @@ A personal recipe book that runs as a static site on GitHub Pages. It has no bui
 - Recipe pages with ½×–3× scaling
 - **Add / edit / delete recipes** from the site. Ingredient names autocomplete from your master list, new ones are added automatically, and you can paste a whole ingredient list at once.
 - **Grocery list**: add a whole recipe or single ingredients. The same ingredient from different recipes is combined ("2 bell peppers"), US units are converted and summed (1 cup + 4 tbsp → 1¼ cups), and items are grouped by store aisle. Syncs across connected devices.
+- **Collections**: save recipes into named groups (like "Angela's Favorites") with the Save button on any recipe; browse them from the Collections page
 - **Print / Save as PDF** for one recipe, or **Print all** for the whole book (one recipe per page)
 - **Export CSV**: one row per recipe with ingredients written out, for Google Sheets, Notion, or a document
 - **Light / dark mode**: follows your device, or pick one with the moon/sun button in the header (remembered per device)
@@ -28,6 +29,8 @@ data/recipes.csv            One row per recipe
 data/ingredients.csv        Master ingredient list
 data/recipe_ingredients.csv Which ingredients (and how much) each recipe uses
 data/recipe-photos/         Photos uploaded from the site (resized to 1600px, JPEG)
+data/collections.csv        Collection names and descriptions
+data/collection_recipes.csv Which recipes are saved in which collection
 .nojekyll                   Tells GitHub Pages to serve files as-is
 ```
 

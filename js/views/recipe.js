@@ -2,10 +2,12 @@ import * as store from "../store.js";
 import * as github from "../github.js";
 import { h, toast, formatMinutes, isSafeUrl, searchFor } from "../ui.js";
 import { formatIngredient, formatQuantity } from "../units.js";
+import { savePanel } from "./collections.js";
 
 const SCALES = [[0.5, "½×"], [1, "1×"], [2, "2×"], [3, "3×"]];
 let scale = 1;
 let scaledRecipeId = null;
+let saveOpen = false;
 
 function metaItem(label, value) {
   return value ? h("div", { class: "meta-item" }, h("dt", {}, label), h("dd", {}, value)) : null;
@@ -27,8 +29,9 @@ function addToGrocery(recipe, items, factor) {
 }
 
 // Shared with the "print all" view. `interactive` adds the controls that don't belong on paper.
-export function renderRecipe(recipe, { interactive = false, factor = 1, onScale } = {}) {
+export function renderRecipe(recipe, { interactive = false, factor = 1, onScale, onToggleSave, saveOpen = false } = {}) {
   const servings = recipe.servings ? formatQuantity(recipe.servings * factor) : "";
+  const savedIn = interactive ? store.getCollections().filter((c) => c.recipeIds.includes(recipe.id)) : [];
 
   return h(
     "article",
@@ -55,9 +58,20 @@ export function renderRecipe(recipe, { interactive = false, factor = 1, onScale 
           metaItem("Serves", servings)),
         interactive &&
           h("div", { class: "toolbar no-print" },
+            h("button", {
+              type: "button", id: "save-toggle",
+              class: `btn ${savedIn.length ? "btn-saved" : "btn-quiet"}`,
+              "aria-expanded": String(saveOpen),
+              title: savedIn.length ? `Saved in ${savedIn.map((c) => c.name).join(", ")}` : "Save to a collection",
+              onclick: onToggleSave,
+            }, savedIn.length ? "★ Saved" : "☆ Save"),
             h("a", { href: `#/edit/${encodeURIComponent(recipe.id)}`, class: "btn btn-quiet" }, "Edit"),
             h("button", { type: "button", class: "btn btn-quiet", onclick: () => window.print() }, "Print / Save PDF"))
-      )
+      ),
+      interactive && saveOpen && savePanel(recipe, onToggleSave),
+      interactive && savedIn.length > 0 &&
+        h("p", { class: "saved-in no-print" }, "In ",
+          savedIn.flatMap((c, i) => [i ? ", " : "", h("a", { href: `#/collection/${encodeURIComponent(c.id)}` }, c.name)]))
     ),
     recipe.image && isSafeUrl(recipe.image) && h("img", { class: "recipe-image", src: store.photoSrc(recipe.image), alt: "" }),
     h(
@@ -116,9 +130,12 @@ export function mount(container, { id }) {
   if (scaledRecipeId !== id) {
     scale = 1;
     scaledRecipeId = id;
+    saveOpen = false;
   }
 
   const render = () => {
+    // Keep keyboard focus (e.g. on a collection checkbox) across re-renders.
+    const focusedId = document.activeElement?.id;
     const recipe = store.getRecipe(id);
     if (!recipe) {
       container.replaceChildren(
@@ -138,8 +155,15 @@ export function mount(container, { id }) {
           render();
           container.querySelector(`.scale-btn[aria-pressed="true"]`)?.focus();
         },
+        saveOpen,
+        onToggleSave: () => {
+          saveOpen = !saveOpen;
+          render();
+          (saveOpen ? container.querySelector(".save-panel input") : container.querySelector("#save-toggle"))?.focus();
+        },
       })
     );
+    if (focusedId) document.getElementById(focusedId)?.focus({ preventScroll: true });
   };
 
   render();
