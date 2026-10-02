@@ -189,11 +189,30 @@ export function findIngredient(name, rows = db.ingredients.rows) {
   );
 }
 
+// ---------- Photos ----------
+
+export const PHOTO_DIR = "data/recipe-photos/";
+const isUploadedPhoto = (image) => typeof image === "string" && image.startsWith(PHOTO_DIR);
+
+// Photos just uploaded from this browser, shown from memory until GitHub Pages
+// republishes the site (about a minute) and the file is available at its address.
+const photoPreviews = new Map();
+export function photoSrc(image) {
+  return photoPreviews.get(image) ?? image;
+}
+
 // form: { name, category, servings, prepMinutes, cookMinutes, tags[], instructions[], notes, source, image,
-//         ingredients: [{ quantity, unit, name, note, aisle, plural }] }
+//         photo?: { base64, previewUrl }, ingredients: [{ quantity, unit, name, note, aisle, plural }] }
+// `photo` is a newly chosen photo to upload; it replaces `image`.
 // Returns the recipe's id. Existing recipes keep their id even if renamed, so links don't break.
 export async function saveRecipe(form, existingId = null) {
-  const paths = Object.values(FILES);
+  const photoPath = form.photo ? `${PHOTO_DIR}${slugify(form.name) || "recipe"}-${Date.now().toString(36)}.jpg` : null;
+  const image = photoPath ?? form.image;
+  // An uploaded photo that this recipe no longer uses gets deleted in the same commit.
+  const oldImage = existingId ? db.recipes.rows.find((r) => r.id === existingId)?.image : null;
+  const oldPhoto = isUploadedPhoto(oldImage) && oldImage !== image ? oldImage : null;
+
+  const paths = [...Object.values(FILES), photoPath, oldPhoto].filter(Boolean);
   let savedId = existingId;
 
   const texts = await github.commitFiles({
@@ -219,7 +238,7 @@ export async function saveRecipe(form, existingId = null) {
         instructions: form.instructions.join("\n"),
         notes: form.notes,
         source: form.source,
-        image: form.image,
+        image,
       };
       if (index >= 0) recipes.rows[index] = row;
       else recipes.rows.push(row);
@@ -249,30 +268,35 @@ export async function saveRecipe(form, existingId = null) {
       ingredients.rows.sort((a, b) => a.id.localeCompare(b.id));
       links.rows = links.rows.filter((r) => r.recipe_id !== savedId).concat(newLinks);
 
-      return [serializeTable(recipes), serializeTable(ingredients), serializeTable(links)];
+      const extra = [];
+      if (photoPath) extra.push({ base64: form.photo.base64 });
+      if (oldPhoto) extra.push(github.DELETE);
+      return [serializeTable(recipes), serializeTable(ingredients), serializeTable(links), ...extra];
     },
   });
 
-  setTables(texts);
+  if (photoPath) photoPreviews.set(photoPath, form.photo.previewUrl);
+  setTables(texts.slice(0, 3));
   emit("data");
   return savedId;
 }
 
 export async function deleteRecipe(id) {
   const recipe = getRecipe(id);
+  const photo = isUploadedPhoto(recipe?.image) ? recipe.image : null;
   const texts = await github.commitFiles({
     branch: github.getSettings().branch,
-    paths: Object.values(FILES),
+    paths: [...Object.values(FILES), photo].filter(Boolean),
     message: `Delete recipe: ${recipe?.name ?? id}`,
     update: ([recipesText, , linksText]) => {
       const recipes = parseTable(recipesText, "recipes");
       const links = parseTable(linksText, "recipeIngredients");
       recipes.rows = recipes.rows.filter((r) => r.id !== id);
       links.rows = links.rows.filter((r) => r.recipe_id !== id);
-      return [serializeTable(recipes), null, serializeTable(links)];
+      return [serializeTable(recipes), null, serializeTable(links), ...(photo ? [github.DELETE] : [])];
     },
   });
-  setTables(texts);
+  setTables(texts.slice(0, 3));
   emit("data");
 }
 

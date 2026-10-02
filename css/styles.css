@@ -441,6 +441,13 @@ button.tag:hover { background: var(--accent); color: var(--on-accent); }
   .ing-new { margin-left: 0; }
 }
 
+.photo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.recipe-form .photo-row input { flex: 1 1 220px; width: auto; }
+.photo-or { color: var(--text-muted); font-size: 0.9rem; }
+.photo-preview-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.photo-preview { width: 220px; max-width: 100%; aspect-ratio: 4 / 3; object-fit: cover; margin-top: 8px; border-radius: var(--radius-sm); background: var(--surface-muted); }
+.hint.is-error { color: var(--danger); }
+
 .paste { margin-top: 16px; }
 .paste summary { cursor: pointer; color: var(--accent-strong); font-weight: 500; }
 .paste .btn { margin-top: 10px; }

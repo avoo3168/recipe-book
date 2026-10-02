@@ -59,7 +59,7 @@ export function renderRecipe(recipe, { interactive = false, factor = 1, onScale 
             h("button", { type: "button", class: "btn btn-quiet", onclick: () => window.print() }, "Print / Save PDF"))
       )
     ),
-    recipe.image && isSafeUrl(recipe.image) && h("img", { class: "recipe-image", src: recipe.image, alt: "" }),
+    recipe.image && isSafeUrl(recipe.image) && h("img", { class: "recipe-image", src: store.photoSrc(recipe.image), alt: "" }),
     h(
       "div",
       { class: "recipe-columns" },

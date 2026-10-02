@@ -129,13 +129,24 @@ export async function testConnection() {
 // Return this from a commitFiles `update` to delete that file.
 export const DELETE = Symbol("delete");
 
+// Uploads binary data (e.g. a photo) once, returning its blob SHA for use in a commit.
+const uploadedBlobs = new WeakMap();
+async function blobSha(binary) {
+  if (!uploadedBlobs.has(binary)) {
+    const blob = await request("/git/blobs", { method: "POST", body: { content: binary.base64, encoding: "base64" } });
+    uploadedBlobs.set(binary, blob.sha);
+  }
+  return uploadedBlobs.get(binary);
+}
+
 // Saves several files in a single commit.
 //
 // `update` receives the current text of each path (null if missing) and returns the new
-// text for each (null = leave unchanged, DELETE = remove). If another device saved in the meantime, the
+// content for each: a string, { base64 } for binary files such as photos, null to leave
+// it unchanged, or DELETE to remove it. If another device saved in the meantime, the
 // latest files are re-read and `update` runs again, so changes are never overwritten.
 // A branch that doesn't exist yet is created with only these files in it.
-// Resolves to the resulting text of each path.
+// Resolves to the resulting content of each path.
 export async function commitFiles({ branch, paths, message, update }) {
   for (let attempt = 0; attempt < 3; attempt++) {
     const head = await getHead(branch);
@@ -144,6 +155,11 @@ export async function commitFiles({ branch, paths, message, update }) {
     const changed = paths
       .map((path, i) => ({ path, content: next[i] }))
       .filter((file, i) => (file.content === DELETE ? current[i] != null : file.content != null && file.content !== current[i]));
+    const entries = await Promise.all(changed.map(async ({ path, content }) => {
+      if (content === DELETE) return { path, mode: "100644", type: "blob", sha: null };
+      if (typeof content === "object") return { path, mode: "100644", type: "blob", sha: await blobSha(content) };
+      return { path, mode: "100644", type: "blob", content };
+    }));
 
     const result = paths.map((_, i) => (next[i] === DELETE ? null : next[i] ?? current[i]));
     if (!changed.length) return result;
@@ -151,13 +167,7 @@ export async function commitFiles({ branch, paths, message, update }) {
     const baseTree = head ? (await request(`/git/commits/${head}`)).tree.sha : undefined;
     const tree = await request("/git/trees", {
       method: "POST",
-      body: {
-        base_tree: baseTree,
-        tree: changed.map(({ path, content }) =>
-          content === DELETE
-            ? { path, mode: "100644", type: "blob", sha: null }
-            : { path, mode: "100644", type: "blob", content }),
-      },
+      body: { base_tree: baseTree, tree: entries },
     });
     const commit = await request("/git/commits", {
       method: "POST",

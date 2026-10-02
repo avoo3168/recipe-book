@@ -27,6 +27,7 @@ js/views/*.js               One file per page (list, recipe, form, grocery, sett
 data/recipes.csv            One row per recipe
 data/ingredients.csv        Master ingredient list
 data/recipe_ingredients.csv Which ingredients (and how much) each recipe uses
+data/recipe-photos/         Photos uploaded from the site (resized to 1600px, JPEG)
 .nojekyll                   Tells GitHub Pages to serve files as-is
 ```
 
@@ -45,7 +46,8 @@ The data is split into three linked tables so ingredients can be counted and com
 | `servings`, `prep_minutes`, `cook_minutes` | Numbers |
 | `tags` | Comma-separated: `quick, vegetarian` |
 | `instructions` | One step per line (a multi-line cell) |
-| `notes`, `source`, `image` | Free text / URLs |
+| `notes`, `source` | Free text / URL |
+| `image` | A photo URL, or `data/recipe-photos/<file>.jpg` for photos uploaded from the site |
 
 **`data/ingredients.csv`**: every ingredient once
 

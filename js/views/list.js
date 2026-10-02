@@ -20,7 +20,7 @@ function renderCard(recipe) {
   const time = formatMinutes(recipe.totalMinutes);
   const media =
     recipe.image && isSafeUrl(recipe.image)
-      ? h("img", { class: "card-media", src: recipe.image, alt: "", loading: "lazy" })
+      ? h("img", { class: "card-media", src: store.photoSrc(recipe.image), alt: "", loading: "lazy" })
       : h("div", { class: `card-media card-placeholder ${tintFor(recipe.category)}`, "aria-hidden": "true" }, recipe.name.charAt(0));
 
   return h(

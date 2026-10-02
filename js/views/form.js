@@ -1,10 +1,127 @@
 import * as store from "../store.js";
 import * as github from "../github.js";
-import { h, toast } from "../ui.js";
+import { h, toast, isSafeUrl } from "../ui.js";
 import { UNITS, parseQuantity, parseIngredientLine, formatQuantity } from "../units.js";
 
 let uid = 0;
 const nextId = (prefix) => `${prefix}-${++uid}`;
+
+const PHOTO_MAX_SIZE = 1600; // pixels on the longest side
+const PHOTO_QUALITY = 0.82;
+
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// Shrinks a photo from the camera roll to a web-friendly JPEG (usually 200–400 KB)
+// and returns it as base64 for uploading, plus a URL for previewing it.
+async function preparePhoto(file) {
+  let source;
+  try {
+    source = await createImageBitmap(file, { imageOrientation: "from-image" });
+  } catch {
+    source = await loadImage(file);
+  }
+  const scale = Math.min(1, PHOTO_MAX_SIZE / Math.max(source.width, source.height));
+  const canvas = h("canvas", { width: Math.round(source.width * scale), height: Math.round(source.height * scale) });
+  const context = canvas.getContext("2d");
+  context.fillStyle = "#fff"; // transparent PNGs get a white background instead of black
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(source, 0, 0, canvas.width, canvas.height);
+
+  const blob = await new Promise((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn't convert the photo."))), "image/jpeg", PHOTO_QUALITY));
+  const base64 = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+  return { base64, previewUrl: URL.createObjectURL(blob) };
+}
+
+// "Photo: [link] or [Upload photo]" with a preview. read() returns
+// { image, photo }: the link or already-uploaded path to keep, and any new photo to upload.
+function photoField(existingImage, onBusy) {
+  const uploaded = existingImage?.startsWith(store.PHOTO_DIR) ? existingImage : "";
+  let keepUploaded = Boolean(uploaded);
+  let photo = null;
+  let error = "";
+
+  const link = h("input", { type: "url", id: nextId("field"), placeholder: "https://…", value: uploaded ? "" : existingImage ?? "" });
+  const file = h("input", { type: "file", accept: "image/*", hidden: true });
+  const preview = h("img", { class: "photo-preview", alt: "Photo preview", hidden: true });
+  const status = h("p", { class: "hint", role: "status" });
+  const removeButton = h("button", {
+    type: "button", class: "btn btn-quiet btn-small", hidden: true,
+    onclick: () => {
+      photo = null;
+      keepUploaded = false;
+      link.value = "";
+      file.value = "";
+      refresh();
+    },
+  }, "Remove photo");
+
+  function refresh() {
+    const typed = link.value.trim();
+    const src = photo?.previewUrl || (typed && isSafeUrl(typed) ? typed : "") || (keepUploaded ? store.photoSrc(uploaded) : "");
+    preview.hidden = !src;
+    if (src && preview.getAttribute("src") !== src) preview.src = src;
+    removeButton.hidden = !src;
+    status.textContent = error || (photo ? "This photo will be uploaded when you save." : "");
+    status.classList.toggle("is-error", Boolean(error));
+  }
+
+  preview.addEventListener("error", () => (preview.hidden = true));
+  link.addEventListener("input", () => {
+    if (link.value.trim()) {
+      photo = null;
+      keepUploaded = false;
+    }
+    error = "";
+    refresh();
+  });
+  file.addEventListener("change", async () => {
+    const chosen = file.files[0];
+    if (!chosen) return;
+    error = "";
+    status.textContent = "Preparing photo…";
+    onBusy(true);
+    try {
+      photo = await preparePhoto(chosen);
+      link.value = "";
+      keepUploaded = false;
+    } catch {
+      error = "That file couldn't be read as a photo. Try a JPEG or PNG.";
+    } finally {
+      onBusy(false);
+      refresh();
+    }
+  });
+  refresh();
+
+  const element = h("div", { class: "field" },
+    h("label", { for: link.id }, "Photo"),
+    h("div", { class: "photo-row" },
+      link,
+      h("span", { class: "photo-or" }, "or"),
+      h("button", { type: "button", class: "btn btn-quiet", onclick: () => file.click() }, "Upload photo"),
+      file),
+    h("div", { class: "photo-preview-row" }, preview, removeButton),
+    status,
+    h("p", { class: "hint" }, "Paste the address of a photo online, or upload one from this device."));
+
+  return {
+    element,
+    read: () => ({ image: link.value.trim() || (keepUploaded ? uploaded : ""), photo }),
+  };
+}
 
 function field(label, control, hint) {
   const id = control.id || (control.id = nextId("field"));
@@ -102,7 +219,8 @@ export function mount(container, { id } = {}) {
   const notesInput = h("textarea", { rows: "3" });
   notesInput.value = r.notes ?? "";
   const sourceInput = h("input", { type: "url", value: r.source ?? "", placeholder: "https://…" });
-  const imageInput = h("input", { type: "url", value: r.image ?? "", placeholder: "https://…" });
+  // Saving waits while a chosen photo is still being prepared.
+  const photoInput = photoField(r.image, (busy) => (saveButton.disabled = busy || !connected));
 
   const rows = h("ol", { class: "ing-rows" });
   const initial = r.ingredients.length
@@ -206,7 +324,7 @@ export function mount(container, { id } = {}) {
         .filter(Boolean),
       notes: notesInput.value.trim(),
       source: sourceInput.value.trim(),
-      image: imageInput.value.trim(),
+      ...photoInput.read(),
       ingredients,
     };
   }
@@ -255,7 +373,7 @@ export function mount(container, { id } = {}) {
       h("legend", {}, "Extras"),
       field("Notes", notesInput),
       field("Source link", sourceInput),
-      field("Photo link", imageInput, "Paste the address of an image online, or leave blank.")),
+      photoInput.element),
     formError,
     h("div", { class: "form-actions" },
       saveButton,
