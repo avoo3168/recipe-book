@@ -20,8 +20,8 @@ const ROUTES = [
   [/^#\/grocery$/, groceryView, "grocery"],
   [/^#\/settings$/, settingsView, "settings"],
   [/^#\/print-all$/, printView, "list"],
-  [/^#\/collections$/, { mount: collectionsView.mountAll }, "collections"],
-  [/^#\/collection\/(.+)$/, { mount: collectionsView.mountOne }, "collections", (m) => ({ id: decodeURIComponent(m[1]) })],
+  [/^#\/collections$/, { mount: collectionsView.mountAll }, "list"],
+  [/^#\/collection\/(.+)$/, { mount: collectionsView.mountOne }, "list", (m) => ({ id: decodeURIComponent(m[1]) })],
 ];
 
 function matchRoute(hash) {

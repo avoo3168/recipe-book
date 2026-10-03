@@ -21,15 +21,13 @@ const FILES = {
   ingredients: "data/ingredients.csv",
   recipeIngredients: "data/recipe_ingredients.csv",
   collections: "data/collections.csv",
-  collectionRecipes: "data/collection_recipes.csv",
 };
 
 const COLUMNS = {
   recipes: ["id", "name", "category", "servings", "prep_minutes", "cook_minutes", "tags", "instructions", "notes", "source", "image"],
   ingredients: ["id", "name", "plural", "aisle"],
   recipeIngredients: ["recipe_id", "position", "quantity", "unit", "ingredient_id", "note"],
-  collections: ["id", "name", "description"],
-  collectionRecipes: ["collection_id", "recipe_id", "added"],
+  collections: ["id", "name", "description", "recipes"],
   grocery: ["id", "ingredient_id", "name", "quantity", "unit", "recipe_id", "checked", "added"],
 };
 
@@ -286,60 +284,68 @@ export async function deleteRecipe(id) {
   const photo = isUploadedPhoto(recipe?.image) ? recipe.image : null;
   const texts = await github.commitFiles({
     branch: github.getSettings().branch,
-    paths: [FILES.recipes, FILES.recipeIngredients, FILES.collectionRecipes, photo].filter(Boolean),
+    paths: [FILES.recipes, FILES.recipeIngredients, FILES.collections, photo].filter(Boolean),
     message: `Delete recipe: ${recipe?.name ?? id}`,
-    update: ([recipesText, linksText, savedText]) => {
+    update: ([recipesText, linksText, collectionsText]) => {
       const recipes = parseTable(recipesText, "recipes");
       const links = parseTable(linksText, "recipeIngredients");
-      const saved = parseTable(savedText, "collectionRecipes");
+      const collections = parseTable(collectionsText, "collections");
       recipes.rows = recipes.rows.filter((r) => r.id !== id);
       links.rows = links.rows.filter((r) => r.recipe_id !== id);
-      const savedBefore = saved.rows.length;
-      saved.rows = saved.rows.filter((r) => r.recipe_id !== id);
+      let inCollections = false;
+      for (const c of collections.rows) {
+        const ids = splitIds(c.recipes);
+        if (ids.includes(id)) {
+          c.recipes = joinIds(ids.filter((r) => r !== id));
+          inCollections = true;
+        }
+      }
       return [
         serializeTable(recipes),
         serializeTable(links),
-        saved.rows.length === savedBefore ? null : serializeTable(saved),
+        inCollections ? serializeTable(collections) : null,
         ...(photo ? [github.DELETE] : []),
       ];
     },
   });
-  setTables({ recipes: texts[0], recipeIngredients: texts[1], collectionRecipes: texts[2] ?? "" });
+  setTables({ recipes: texts[0], recipeIngredients: texts[1], collections: texts[2] ?? "" });
   emit("data");
 }
 
 // ---------- Collections ----------
 //
+// One row per collection in data/collections.csv. The `recipes` cell lists recipe ids
+// separated by commas, oldest first (shown newest first).
+//
 // Changes show up immediately and are saved to GitHub one after another in the
 // background. If a save fails, the data is reloaded from GitHub so the screen
 // matches what was actually saved.
 
+const splitIds = (text) => (text || "").split(",").map((s) => s.trim()).filter(Boolean);
+const joinIds = (ids) => ids.join(", ");
+
 let collectionSaves = Promise.resolve();
 
 function saveCollections(message, mutate) {
-  const apply = (texts) => {
-    const collections = parseTable(texts.collections, "collections");
-    const saved = parseTable(texts.collectionRecipes, "collectionRecipes");
-    mutate(collections.rows, saved);
-    return { collections: serializeTable(collections), collectionRecipes: serializeTable(saved) };
+  const apply = (text) => {
+    const collections = parseTable(text, "collections");
+    mutate(collections.rows);
+    return serializeTable(collections);
   };
 
   // Update the screen now.
-  setTables(apply({ collections: serializeTable(db.collections), collectionRecipes: serializeTable(db.collectionRecipes) }));
+  setTables({ collections: apply(serializeTable(db.collections)) });
   emit("data");
 
-  // Then save, replaying the same change on the latest files from GitHub.
+  // Then save, replaying the same change on the latest file from GitHub.
   const save = collectionSaves.then(async () => {
-    const [collections, collectionRecipes] = await github.commitFiles({
+    const [text] = await github.commitFiles({
       branch: github.getSettings().branch,
-      paths: [FILES.collections, FILES.collectionRecipes],
+      paths: [FILES.collections],
       message,
-      update: ([collections, collectionRecipes]) => {
-        const next = apply({ collections, collectionRecipes });
-        return [next.collections, next.collectionRecipes];
-      },
+      update: ([current]) => [apply(current)],
     });
-    setTables({ collections: collections ?? "", collectionRecipes: collectionRecipes ?? "" });
+    setTables({ collections: text ?? "" });
     emit("data");
   });
   collectionSaves = save.catch(async () => {
@@ -351,15 +357,12 @@ function saveCollections(message, mutate) {
 export function getCollections() {
   return db.collections.rows
     .filter((c) => c.id)
-    .map((c) => {
-      // Newest first; rows added in the same moment keep file order (later = newer).
-      const recipeIds = db.collectionRecipes.rows
-        .map((r, index) => ({ ...r, index }))
-        .filter((r) => r.collection_id === c.id)
-        .sort((a, b) => (b.added || "").localeCompare(a.added || "") || b.index - a.index)
-        .map((r) => r.recipe_id);
-      return { id: c.id, name: c.name || "Untitled", description: c.description || "", recipeIds };
-    })
+    .map((c) => ({
+      id: c.id,
+      name: c.name || "Untitled",
+      description: c.description || "",
+      recipeIds: splitIds(c.recipes).reverse(), // newest first
+    }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -370,12 +373,8 @@ export function getCollection(id) {
 // Returns the new collection's id. `recipeId` optionally saves a recipe into it right away.
 export function createCollection(name, recipeId = null) {
   const id = uniqueId(slugify(name) || "collection", new Set(db.collections.rows.map((c) => c.id)));
-  const added = new Date().toISOString();
-  const done = saveCollections(`Add collection: ${name}`, (collections, saved) => {
-    if (!collections.some((c) => c.id === id)) collections.push({ id, name, description: "" });
-    if (recipeId && !saved.rows.some((r) => r.collection_id === id && r.recipe_id === recipeId)) {
-      saved.rows.push({ collection_id: id, recipe_id: recipeId, added });
-    }
+  const done = saveCollections(`Add collection: ${name}`, (collections) => {
+    if (!collections.some((c) => c.id === id)) collections.push({ id, name, description: "", recipes: recipeId ?? "" });
   });
   return { id, done };
 }
@@ -389,21 +388,21 @@ export function updateCollection(id, { name, description }) {
 
 export function deleteCollection(id) {
   const name = getCollection(id)?.name ?? id;
-  return saveCollections(`Delete collection: ${name}`, (collections, saved) => {
+  return saveCollections(`Delete collection: ${name}`, (collections) => {
     const index = collections.findIndex((c) => c.id === id);
     if (index >= 0) collections.splice(index, 1);
-    saved.rows = saved.rows.filter((r) => r.collection_id !== id);
   });
 }
 
 export function setRecipeInCollection(collectionId, recipeId, included) {
   const collection = getCollection(collectionId)?.name ?? collectionId;
   const recipe = getRecipe(recipeId)?.name ?? recipeId;
-  const added = new Date().toISOString();
-  return saveCollections(`${included ? "Save" : "Remove"} ${recipe} ${included ? "to" : "from"} ${collection}`, (_, saved) => {
-    const exists = saved.rows.some((r) => r.collection_id === collectionId && r.recipe_id === recipeId);
-    if (included && !exists) saved.rows.push({ collection_id: collectionId, recipe_id: recipeId, added });
-    if (!included) saved.rows = saved.rows.filter((r) => !(r.collection_id === collectionId && r.recipe_id === recipeId));
+  return saveCollections(`${included ? "Save" : "Remove"} ${recipe} ${included ? "to" : "from"} ${collection}`, (collections) => {
+    const row = collections.find((c) => c.id === collectionId);
+    if (!row) return;
+    const ids = splitIds(row.recipes).filter((r) => r !== recipeId);
+    if (included) ids.push(recipeId);
+    row.recipes = joinIds(ids);
   });
 }
 

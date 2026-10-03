@@ -1,5 +1,27 @@
 import * as store from "../store.js";
 import { h, formatMinutes, isSafeUrl, tintFor, downloadFile, clearSearch } from "../ui.js";
+import { collectionCover } from "./collections.js";
+
+// A scrolling row of collection covers, plus a card for making a new one.
+function collectionsStrip() {
+  const collections = store.getCollections();
+  return h("section", { class: "collections-strip", "aria-labelledby": "collections-strip-heading" },
+    h("div", { class: "strip-header" },
+      h("h3", { id: "collections-strip-heading" }, "Collections"),
+      collections.length > 0 && h("a", { href: "#/collections" }, "See all")),
+    h("ul", { class: "strip" },
+      collections.map((c) =>
+        h("li", {},
+          h("a", { href: `#/collection/${encodeURIComponent(c.id)}`, class: "strip-card" },
+            collectionCover(c),
+            h("span", { class: "strip-name" }, c.name),
+            h("span", { class: "strip-count" }, `${c.recipeIds.length} ${c.recipeIds.length === 1 ? "recipe" : "recipes"}`)))),
+      h("li", {},
+        h("a", { href: "#/collections", class: "strip-card strip-new" },
+          h("div", { class: "collection-cover is-empty", "aria-hidden": "true" }, "+"),
+          h("span", { class: "strip-name" }, "New collection"),
+          collections.length === 0 && h("span", { class: "strip-count" }, "e.g. Angela's Favorites")))));
+}
 
 let category = "All";
 
@@ -61,6 +83,7 @@ export function mount(container) {
             : [h("p", {}, "Your recipe book is empty."), h("a", { href: "#/new", class: "btn btn-primary" }, "Add your first recipe")]);
 
     container.replaceChildren(
+      ...(!query && category === "All" ? [collectionsStrip()] : []),
       h(
         "section",
         { "aria-labelledby": "list-heading" },

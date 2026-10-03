@@ -15,7 +15,7 @@ function reportFailure(promise) {
 }
 
 // 2×2 mosaic of the newest recipes' photos (or letter tiles), like Instagram's saved collections.
-function cover(collection) {
+export function collectionCover(collection) {
   const recipes = collection.recipeIds.map((id) => store.getRecipe(id)).filter(Boolean).slice(0, 4);
   if (!recipes.length) return h("div", { class: "collection-cover is-empty", "aria-hidden": "true" }, "No recipes yet");
   return h("div", { class: `collection-cover count-${recipes.length}`, "aria-hidden": "true" },
@@ -49,6 +49,7 @@ export function mountAll(container) {
     const collections = store.getCollections();
     container.replaceChildren(
       h("section", { "aria-labelledby": "collections-heading" },
+        h("a", { href: "#/", class: "back" }, "← All recipes"),
         h("div", { class: "page-header" },
           h("div", {},
             h("h2", { id: "collections-heading", tabindex: "-1" }, "Collections"),
@@ -59,7 +60,7 @@ export function mountAll(container) {
               collections.map((c) =>
                 h("li", { class: "card" },
                   h("a", { href: `#/collection/${encodeURIComponent(c.id)}`, class: "card-link" },
-                    cover(c),
+                    collectionCover(c),
                     h("div", { class: "card-body" },
                       h("h3", { class: "card-title" }, c.name),
                       h("p", { class: "card-meta" }, recipeCount(c.recipeIds.length)))))))
