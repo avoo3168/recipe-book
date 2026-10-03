@@ -2,26 +2,16 @@
    Every color lives here so a dark theme can be added later by
    redefining these variables under a [data-theme="dark"] selector. */
 :root {
-  /* Pages: aged parchment and brown ink */
-  --bg: #f6edd8;
-  --surface: #fdf8ec;
-  --surface-muted: #efe2c6;
-  --text: #34261a;
-  --text-muted: #76624b;
-  --border: #e2d2af;
-  --border-strong: #c9b48b;
+  --bg: #faf7f2;
+  --surface: #ffffff;
+  --surface-muted: #f2ede4;
+  --text: #2a2521;
+  --text-muted: #6f665d;
+  --border: #e6dfd3;
+  --border-strong: #cfc5b5;
   --accent: #b5532f;
   --accent-strong: #8f3d1f;
-  --accent-soft: #f3dccd;
-
-  /* Cover: brown leather with cream stitching */
-  --leather: #7d4c2c;
-  --leather-dark: #4f2f1a;
-  --leather-text: #f5e6c8;
-  --leather-muted: #dcc49c;
-  --stitch: rgb(240 214 170 / 55%);
-  --page-edge-1: #ebdcbc;
-  --page-edge-2: #dccaa3;
+  --accent-soft: #f6e4da;
   --on-accent: #ffffff;
   --success: #2f7a4a;
   --success-soft: #e1f0e5;
@@ -31,11 +21,11 @@
   --danger-soft: #fbe3e1;
   --focus: #2f6db5;
 
-  --tint-0: #ecd2bf;
-  --tint-1: #dcdac0;
-  --tint-2: #eedcad;
-  --tint-3: #d8d1c2;
-  --tint-4: #e4cec7;
+  --tint-0: #f3dfd3;
+  --tint-1: #e0e8d6;
+  --tint-2: #f4e8c9;
+  --tint-3: #dde6ec;
+  --tint-4: #eadcea;
   --tint-ink: #5b4f45;
 
   --font-display: "Fraunces", Georgia, serif;
@@ -43,13 +33,8 @@
 
   --radius: 14px;
   --radius-sm: 8px;
-  --shadow: 0 1px 2px rgb(70 45 20 / 8%), 0 4px 16px rgb(70 45 20 / 8%);
-  --shadow-hover: 0 2px 4px rgb(70 45 20 / 10%), 0 10px 28px rgb(70 45 20 / 14%);
-
-  /* Textures, drawn with SVG noise so there are no image files to load */
-  --leather-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .4 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
-  --leather-mottle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='700' height='700'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.012' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .6 -.05'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E");
-  --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .22 0 0 0 0 .08 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
+  --shadow: 0 1px 2px rgb(42 37 33 / 6%), 0 4px 16px rgb(42 37 33 / 6%);
+  --shadow-hover: 0 2px 4px rgb(42 37 33 / 8%), 0 10px 28px rgb(42 37 33 / 10%);
 
   color-scheme: light;
 }
@@ -59,24 +44,17 @@
    (stored as data-theme on <html>). Screen only, so printing always uses light colors. */
 @media screen and (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #231c15;
-    --surface: #2c241c;
-    --surface-muted: #352b21;
-    --text: #efe5d4;
-    --text-muted: #b2a189;
-    --border: #43382b;
-    --border-strong: #5c4d3b;
-    --leather: #2f2015;
-    --leather-dark: #1f150d;
-    --leather-text: #eadbbd;
-    --leather-muted: #bfa77f;
-    --stitch: rgb(220 190 140 / 35%);
-    --page-edge-1: #2b231b;
-    --page-edge-2: #221b14;
+    --bg: #1a1714;
+    --surface: #24201c;
+    --surface-muted: #2d2823;
+    --text: #efe8df;
+    --text-muted: #aca295;
+    --border: #3a342e;
+    --border-strong: #52493f;
     --accent: #e27d55;
     --accent-strong: #f29a76;
     --accent-soft: #3f2b21;
-    --on-accent: #231c15;
+    --on-accent: #1a1714;
     --success: #7cd39a;
     --success-soft: #1f3426;
     --warning-soft: #3b311f;
@@ -85,10 +63,10 @@
     --danger-soft: #402321;
     --focus: #86b6f5;
     --tint-0: #4a3328;
-    --tint-1: #3b3c2a;
-    --tint-2: #4d3f22;
-    --tint-3: #3b352c;
-    --tint-4: #45302b;
+    --tint-1: #33412d;
+    --tint-2: #4a4027;
+    --tint-3: #2c3b45;
+    --tint-4: #41314a;
     --tint-ink: #eadfd2;
     --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 16px rgb(0 0 0 / 25%);
     --shadow-hover: 0 2px 4px rgb(0 0 0 / 35%), 0 10px 28px rgb(0 0 0 / 35%);
@@ -97,24 +75,17 @@
 }
 @media screen {
   :root[data-theme="dark"] {
-    --bg: #231c15;
-    --surface: #2c241c;
-    --surface-muted: #352b21;
-    --text: #efe5d4;
-    --text-muted: #b2a189;
-    --border: #43382b;
-    --border-strong: #5c4d3b;
-    --leather: #2f2015;
-    --leather-dark: #1f150d;
-    --leather-text: #eadbbd;
-    --leather-muted: #bfa77f;
-    --stitch: rgb(220 190 140 / 35%);
-    --page-edge-1: #2b231b;
-    --page-edge-2: #221b14;
+    --bg: #1a1714;
+    --surface: #24201c;
+    --surface-muted: #2d2823;
+    --text: #efe8df;
+    --text-muted: #aca295;
+    --border: #3a342e;
+    --border-strong: #52493f;
     --accent: #e27d55;
     --accent-strong: #f29a76;
     --accent-soft: #3f2b21;
-    --on-accent: #231c15;
+    --on-accent: #1a1714;
     --success: #7cd39a;
     --success-soft: #1f3426;
     --warning-soft: #3b311f;
@@ -123,10 +94,10 @@
     --danger-soft: #402321;
     --focus: #86b6f5;
     --tint-0: #4a3328;
-    --tint-1: #3b3c2a;
-    --tint-2: #4d3f22;
-    --tint-3: #3b352c;
-    --tint-4: #45302b;
+    --tint-1: #33412d;
+    --tint-2: #4a4027;
+    --tint-3: #2c3b45;
+    --tint-4: #41314a;
     --tint-ink: #eadfd2;
     --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 4px 16px rgb(0 0 0 / 25%);
     --shadow-hover: 0 2px 4px rgb(0 0 0 / 35%), 0 10px 28px rgb(0 0 0 / 35%);
@@ -151,13 +122,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  /* The book's leather cover: fine grain, darker patches, and worn, darker edges */
-  background-color: var(--leather);
-  background-image:
-    var(--leather-grain),
-    var(--leather-mottle),
-    radial-gradient(ellipse at 50% 40%, transparent 50%, rgb(0 0 0 / 38%) 100%);
-  background-attachment: fixed;
+  background: var(--bg);
   color: var(--text);
   font: 16px/1.6 var(--font-body);
   -webkit-font-smoothing: antialiased;
@@ -216,21 +181,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 
 /* ---------- Header ---------- */
-/* A darker leather band, like the book's spine, with a stitched seam along the bottom. */
 .site-header {
   position: sticky; top: 0; z-index: 5;
-  background-color: var(--leather-dark);
-  background-image: var(--leather-grain);
-  border-bottom: 1px solid rgb(0 0 0 / 40%);
-  box-shadow: 0 3px 12px rgb(0 0 0 / 30%);
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
 }
-.site-header::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: 5px;
-  border-bottom: 1.5px dashed var(--stitch); pointer-events: none;
-}
-.site-header .brand { color: var(--leather-text); }
-.site-header .brand-text { text-shadow: 0 1px 0 rgb(0 0 0 / 50%); }
-.site-header .search input { border-color: transparent; }
 
 .header-inner {
   display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px;
@@ -279,11 +235,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .site-nav > a:not(.btn), .site-nav > button {
   display: inline-flex; align-items: center; gap: 6px;
   min-height: 36px; padding: 6px 10px; border: 0; border-radius: 999px;
-  background: transparent; color: var(--leather-muted); text-decoration: none;
+  background: transparent; color: var(--text-muted); text-decoration: none;
   font-size: 0.95rem; font-weight: 500; cursor: pointer;
 }
-.site-nav > a:not(.btn):hover, .site-nav > button:hover { color: var(--leather-text); background: rgb(255 255 255 / 9%); }
-.site-nav > a[aria-current="page"]:not(.btn) { color: var(--leather-text); background: rgb(255 255 255 / 14%); }
+.site-nav > a:not(.btn):hover, .site-nav > button:hover { color: var(--text); background: var(--surface-muted); }
+.site-nav > a[aria-current="page"]:not(.btn) { color: var(--text); background: var(--surface-muted); }
 .site-nav .nav-icon { padding: 6px 8px; }
 
 .badge {
@@ -306,30 +262,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 
 /* ---------- Main ---------- */
-/* The page: parchment with faint age stains, a stack of pages beneath it,
-   and stitching around it on the leather. */
-main.container {
-  flex: 1;
-  width: calc(100% - 32px);
-  margin: 24px auto 28px;
-  padding-top: 28px; padding-bottom: 64px;
-  background-color: var(--bg);
-  background-image:
-    var(--paper-grain),
-    radial-gradient(ellipse at 0% 0%, rgb(150 105 45 / 12%), transparent 45%),
-    radial-gradient(ellipse at 100% 100%, rgb(150 105 45 / 14%), transparent 50%),
-    radial-gradient(ellipse at 85% 10%, rgb(150 105 45 / 6%), transparent 30%);
-  border-radius: 3px;
-  box-shadow:
-    inset 0 0 60px rgb(120 80 30 / 10%),
-    3px 3px 0 -1px var(--page-edge-1),
-    6px 6px 0 -2px var(--page-edge-2),
-    0 20px 45px rgb(0 0 0 / 45%);
-  outline: 1.5px dashed var(--stitch);
-  outline-offset: 9px;
-}
-main.container:focus { outline: 1.5px dashed var(--stitch); }
-@media (min-width: 720px) { main.container { width: calc(100% - 80px); margin-top: 32px; margin-bottom: 36px; } }
+main.container { flex: 1; padding-top: 28px; padding-bottom: 64px; }
 .loading, .empty { color: var(--text-muted); }
 .empty { padding: 48px 0; text-align: center; }
 .empty .btn { margin-top: 8px; }
@@ -657,15 +590,13 @@ fieldset .help { margin: 16px 0 0; }
 }
 
 /* ---------- Footer ---------- */
-.site-footer { padding: 4px 0 28px; color: var(--leather-muted); font-size: 0.88rem; text-shadow: 0 1px 0 rgb(0 0 0 / 40%); }
-.site-footer a { color: var(--leather-text); }
+.site-footer { padding: 20px 0; border-top: 1px solid var(--border); color: var(--text-muted); font-size: 0.88rem; }
 
 /* ---------- Print: just the recipe, on plain paper ---------- */
 @media print {
   @page { margin: 0.6in; }
   .no-print { display: none !important; }
   body { background: #fff; color: #000; font-size: 11pt; }
-  main.container { width: auto; margin: 0; background: none; box-shadow: none; outline: none; border-radius: 0; }
   main { padding: 0; }
   .container { max-width: none; padding: 0; }
   .recipe { max-width: none; }
